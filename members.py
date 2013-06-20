@@ -76,7 +76,7 @@ class member():
         self.join = None
         self.posts = None
         self.post24Hours = None
-        self.post168Hours = None
+        self.post28Quarters = None
         self.postSections = None
         self.likes = None
         self.points = None
@@ -89,7 +89,7 @@ class member():
         url = "http://ukofequestria.co.uk/search/member?user_id={ID}".format(ID=self.ID)
         self.posts = []
         self.post24Hours = [0]*24
-        self.post168Hours = [0]*168
+        self.post28Quarters = [0]*28
         self.postSections = {}
         while url:
             parser = postOverviewParser()
@@ -102,7 +102,7 @@ class member():
             
             for p in posts:
                 self.post24Hours[p["time"].hour] += 1
-                self.post168Hours[p["time"].weekday() * 24 + p["time"].hour] += 1
+                self.post28Quarters[p["time"].weekday()*4 + p["time"].hour/6] += 1
                 try:
                     self.postSections[p["section"]] = self.postSections.get(p["section"],0) + 1
                 except KeyError:
@@ -116,6 +116,6 @@ if __name__ == '__main__':
     user.getPostData()
     pprint.pprint(user.posts)
     print user.post24Hours
-    print user.post168Hours
+    print user.post28Quarters 
     print user.postSections
-    print sum(user.postHours)
+    print sum(user.post24Hours)
