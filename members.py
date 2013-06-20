@@ -75,7 +75,8 @@ class member():
         self.name = None
         self.join = None
         self.posts = None
-        self.postHours = None
+        self.post24Hours = None
+        self.post168Hours = None
         self.postSections = None
         self.likes = None
         self.points = None
@@ -87,7 +88,8 @@ class member():
     def getPostData(self):
         url = "http://ukofequestria.co.uk/search/member?user_id={ID}".format(ID=self.ID)
         self.posts = []
-        self.postHours = [0]*24
+        self.post24Hours = [0]*24
+        self.post168Hours = [0]*168
         self.postSections = {}
         while url:
             parser = postOverviewParser()
@@ -99,7 +101,8 @@ class member():
             posts,url = parser.returns,parser.next
             
             for p in posts:
-                self.postHours[p["time"].hour] += 1
+                self.post24Hours[p["time"].hour] += 1
+                self.post168Hours[p["time"].weekday() * 24 + p["time"].hour] += 1
                 try:
                     self.postSections[p["section"]] = self.postSections.get(p["section"],0) + 1
                 except KeyError:
@@ -107,13 +110,12 @@ class member():
             
             self.posts.extend(posts)
             if url: url = "http://ukofequestria.co.uk/"+url
-    
-    def getBaseData(self):
         
-        
-ripp_ = member(17)
-ripp_.getPostData()
-pprint.pprint(ripp_.posts)
-print ripp_.postHours
-print ripp_.postSections
-print sum(ripp_.postHours)
+if __name__ == '__main__':
+    user = member(raw_input("enter member id:"))
+    user.getPostData()
+    pprint.pprint(user.posts)
+    print user.post24Hours
+    print user.post168Hours
+    print user.postSections
+    print sum(user.postHours)
