@@ -2,9 +2,64 @@ import urllib2 as urllib
 import HTMLParser
 import datetime
 import pprint
+import random
 
-class postOverviewParser(HTMLParser.HTMLParser):
+class dataListParser(HTMLParser.HTMLParser):
+    def reset(self):
+        self.data = {}
+        self.cKey = ""
+        self.engaged = False
+        HTMLParser.HTMLParser.reset(self)
+        
+    def handle_starttag(self,tag,attrs):
+        if (tag == "dt" and not self.cKey) or (tag == "dd" and self.cKey):
+            self.engaged = True
     
+    def handle_endtag(self,tag):
+        if tag == "dt" or tag == "dd":
+            self.engaged = False
+    
+    def handle_data(self,data):
+        if self.engaged:
+            if not self.cKey:
+                self.cKey = data
+            else:
+                self.data[self.cKey] = data
+                self.cKey = ""
+
+class baseInfoParser(dataListParser):
+    def reset(self):
+        dataListParser.reset(self)
+        self.name = None
+        self.onName = False
+        self.followers = None
+        self.following = None
+
+    def handle_starttag(self,tag,attrs):
+        if tag == "h3":
+            for a,v in attrs:
+                if a == "title":
+                    frags = v.split(" ")
+                    if frags[-3] == "following":
+                        self.following = int(frags[-2])
+                    else:
+                        self.followers = int(frags[-2])
+        elif tag == "h1":
+            self.onName = True
+        dataListParser.handle_starttag(self,tag,attrs)
+    
+    def handle_endtag(self,tag):
+        if tag == "h1":
+            self.onName = False
+        dataListParser.handle_endtag(self,tag)
+            
+    def handle_data(self,data):
+        if self.onName:
+            self.name = data
+        dataListParser.handle_data(self,data)
+            
+
+class postOverviewParser(HTMLParser.HTMLParser):    
     def reset(self):
         self.stage = "doc"
         self.current = {"poster":""}
@@ -73,15 +128,16 @@ class member():
     def __init__(self,ID):
         self.ID = ID
         self.name = None
-        self.join = None
-        self.posts = None
+        self.joined = None
+        self.postCount = None
         self.post24Hours = None
         self.post28Quarters = None
         self.postSections = None
         self.likes = None
         self.points = None
         self.followers = None
-        self.follers = None
+        self.following = None
+        self.gender = None
         self.lastUpdated = (None,None,None)
         self.posts = []
         
@@ -110,11 +166,41 @@ class member():
             
             self.posts.extend(posts)
             if url: url = "http://ukofequestria.co.uk/"+url
+    
+    def getBaseInfo(self):
+        url = "http://ukofequestria.co.uk/members/{ID}/".format(ID=self.ID)
+        page = urllib.urlopen(url)
+        parser = baseInfoParser()
+        parser.feed(page.read())
+        parser.close()
+        page.close()
+        self.name = parser.name
+        self.followers = parser.followers
+        self.following = parser.following
+        self.joined = parser.data["Joined:"]
+        self.postCount = parser.data["Messages:"]
+        self.likes = parser.data["Likes Received:"]
+        self.points = parser.data["Trophy Points:"]
+        self.gender = parser.data["Gender:"]
+    
+    def randomSnippet(self):
+        return random.choice(self.posts)["snippet"]
         
 if __name__ == '__main__':
     user = member(raw_input("enter member id:"))
     user.getPostData()
-    pprint.pprint(user.posts)
+    user.getBaseInfo()
+    #pprint.pprint(user.posts)
+    print "name:",      user.name
+    print "followers:", user.followers
+    print "following:", user.following
+    print "joined:",    user.joined
+    print "posts:",     user.postCount
+    print "likes:",     user.likes
+    print "points:",    user.points
+    print "gender:",    user.gender
+    print user.randomSnippet()
+    print "----------"
     print user.post24Hours
     print user.post28Quarters 
     print user.postSections
